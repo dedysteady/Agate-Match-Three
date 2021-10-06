@@ -1,8 +1,11 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class TimeManager : MonoBehaviour
 {
     #region Singleton
+
     private static TimeManager _instance = null;
 
     public static TimeManager Instance
@@ -11,7 +14,7 @@ public class TimeManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<TimeManager>();
+                 _instance = FindObjectOfType<TimeManager>();
 
                 if (_instance == null)
                 {

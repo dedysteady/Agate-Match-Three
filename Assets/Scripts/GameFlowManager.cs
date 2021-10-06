@@ -1,8 +1,10 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class GameFlowManager : MonoBehaviour
 {
-    #region Singleton
+   #region Singleton
 
     private static GameFlowManager _instance = null;
 
@@ -16,7 +18,7 @@ public class GameFlowManager : MonoBehaviour
 
                 if (_instance == null)
                 {
-                    Debug.LogError("Fatal Error: GameFlowManager not Found");
+                   Debug.LogError("Fatal Error: GameFlowManager not Found");
                 }
             }
 
@@ -25,9 +27,6 @@ public class GameFlowManager : MonoBehaviour
     }
 
     #endregion
-
-    [Header("UI")]
-    public UIGameOver GameOverUI;
 
     public bool IsGameOver { get { return isGameOver; } }
 
@@ -38,10 +37,14 @@ public class GameFlowManager : MonoBehaviour
         isGameOver = false;
     }
 
+    [Header("UI")]
+    public UIGameOver GameOverUI;
+
     public void GameOver()
     {
         isGameOver = true;
         ScoreManager.Instance.SetHighScore();
         GameOverUI.Show();
+        SoundManager.Instance.PlayGame();
     }
 }

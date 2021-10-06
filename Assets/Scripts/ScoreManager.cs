@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class ScoreManager : MonoBehaviour
 {
@@ -49,7 +51,6 @@ public class ScoreManager : MonoBehaviour
     public void IncrementCurrentScore(int tileCount, int comboCount)
     {
         currentScore += (tileCount * tileRatio) * (comboCount * comboRatio);
-
         SoundManager.Instance.PlayScore(comboCount > 1);
     }
 

@@ -4,9 +4,11 @@ using UnityEngine;
 
 public class BoardManager : MonoBehaviour
 {
+    // Membuat Singleton
     #region Singleton
+  
     private static BoardManager _instance = null;
-
+  
     public static BoardManager Instance
     {
         get
@@ -24,6 +26,7 @@ public class BoardManager : MonoBehaviour
             return _instance;
         }
     }
+  
     #endregion
 
     [Header("Board")]
@@ -35,81 +38,25 @@ public class BoardManager : MonoBehaviour
     public List<Sprite> tileTypes = new List<Sprite>();
     public GameObject tilePrefab;
 
+    private Vector2 startPosition;
+    private Vector2 endPosition;
+    private TileController[,] tiles;
+    private int combo;
+
     public bool IsAnimating
     {
         get
         {
             return IsProcessing || IsSwapping;
-        }
+        }   
     }
 
-    public bool IsProcessing { get; set; }
     public bool IsSwapping { get; set; }
+    public bool IsProcessing { get; set; }
 
-    private Vector2 startPosition;
-    private Vector2 endPosition;
-    private int combo;
-    private TileController[,] tiles;
-
-    private void Start()
-    {
-        Vector2 tileSize = tilePrefab.GetComponent<SpriteRenderer>().size;
-        CreateBoard(tileSize);
-
-        IsProcessing = false;
-        IsSwapping = false;
-    }
-
-    #region Generate
-    private void CreateBoard(Vector2 tileSize)
-    {
-        tiles = new TileController[size.x, size.y];
-
-        Vector2 totalSize = (tileSize + offsetTile) * (size - Vector2.one);
-
-        startPosition = (Vector2)transform.position - (totalSize / 2) + offsetBoard;
-        endPosition = startPosition + totalSize;
-
-        for (int x = 0; x < size.x; x++)
-        {
-            for (int y = 0; y < size.y; y++)
-            {
-                TileController newTile = Instantiate(tilePrefab, new Vector2(startPosition.x + ((tileSize.x + offsetTile.x) * x), startPosition.y + ((tileSize.y + offsetTile.y) * y)), tilePrefab.transform.rotation, transform).GetComponent<TileController>();
-                tiles[x, y] = newTile;
-
-                // get no tile id
-                List<int> possibleId = GetStartingPossibleIdList(x, y);
-                int newId = possibleId[Random.Range(0, possibleId.Count)];
-
-                newTile.ChangeId(newId, x, y);
-            }
-        }
-    }
-
-    private List<int> GetStartingPossibleIdList(int x, int y)
-    {
-        List<int> possibleId = new List<int>();
-
-        for (int i = 0; i < tileTypes.Count; i++)
-        {
-            possibleId.Add(i);
-        }
-
-        if (x > 1 && tiles[x - 1, y].id == tiles[x - 2, y].id)
-        {
-            possibleId.Remove(tiles[x - 1, y].id);
-        }
-
-        if (y > 1 && tiles[x, y - 1].id == tiles[x, y - 2].id)
-        {
-            possibleId.Remove(tiles[x, y - 1].id);
-        }
-
-        return possibleId;
-    }
-    #endregion
 
     #region Swapping
+
     public IEnumerator SwapTilePosition(TileController a, TileController b, System.Action onCompleted)
     {
         IsSwapping = true;
@@ -134,35 +81,83 @@ public class BoardManager : MonoBehaviour
         onCompleted?.Invoke();
 
         IsSwapping = false;
-    }
+    }   
+
     #endregion
 
-    public void Process()
+    public Vector2Int GetTileIndex(TileController tile)
     {
-        IsProcessing = true;
-        combo = 0;
-
-        ProcessMatches();
-    }
-
-    #region Match
-    private void ProcessMatches()
-    {
-        List<TileController> matchingTiles = GetAllMatches();
-
-        // stop locking if no match found
-        if (matchingTiles == null || matchingTiles.Count == 0)
+        for (int x = 0; x < size.x; x++)
         {
-            IsProcessing = false;
-            return;
+            for (int y = 0; y < size.y; y++)
+            {
+                if (tile == tiles[x, y]) return new Vector2Int(x, y);
+            }
         }
 
-        combo++;
-        ScoreManager.Instance.IncrementCurrentScore(matchingTiles.Count, combo);
-
-        StartCoroutine(ClearMatches(matchingTiles, ProcessDrop));
+        return new Vector2Int(-1, -1);
     }
 
+    public Vector2 GetIndexPosition(Vector2Int index)
+    {
+        Vector2 tileSize = tilePrefab.GetComponent<SpriteRenderer>().size;
+        return new Vector2(startPosition.x + ((tileSize.x + offsetTile.x) * index.x), startPosition.y + ((tileSize.y + offsetTile.y) * index.y));
+    }
+
+    private void Start()
+    {
+        Vector2 tileSize = tilePrefab.GetComponent<SpriteRenderer>().size;
+        CreateBoard(tileSize);
+    }
+
+    private void CreateBoard(Vector2 tileSize)
+    {
+        tiles = new TileController[size.x, size.y];
+        Vector2 totalSize = (tileSize + offsetTile) * (size - Vector2.one);
+        
+        startPosition = (Vector2)transform.position - (totalSize / 2) + offsetBoard;
+        endPosition = startPosition + totalSize;
+
+        for (int x = 0; x < size.x; x++)
+        {
+            for (int y = 0; y < size.y; y++)
+            {
+                TileController newTile = Instantiate(tilePrefab, new Vector2(startPosition.x + ((tileSize.x + offsetTile.x) * x), startPosition.y + ((tileSize.y + offsetTile.y) * y)), tilePrefab.transform.rotation, transform).GetComponent<TileController>();
+                tiles[x, y] = newTile;
+
+                // get no tile id
+                List<int> possibleId = GetStartingPossibleIdList(x, y);
+                int newId = possibleId[Random.Range(0, possibleId.Count)];
+
+                newTile.ChangeId(newId, x, y);
+            }
+        }
+    }
+
+    private List<int> GetStartingPossibleIdList(int x, int y)
+    {
+        //Fungsi agar tidak ada 3 Tile sama dalam satu garis
+        List<int> possibleId = new List<int>();
+
+        for (int i = 0; i < tileTypes.Count; i++)
+        {
+            possibleId.Add(i);
+        }
+
+        if (x > 1 && tiles[x - 1, y].id == tiles[x - 2, y].id)
+        {
+            possibleId.Remove(tiles[x - 1, y].id);
+        }
+
+        if (y > 1 && tiles[x, y - 1].id == tiles[x, y - 2].id)
+        {
+            possibleId.Remove(tiles[x, y - 1].id);
+        }   
+
+        return possibleId;
+    }
+
+    //fungsi check match 
     public List<TileController> GetAllMatches()
     {
         List<TileController> matchingTiles = new List<TileController>();
@@ -193,6 +188,32 @@ public class BoardManager : MonoBehaviour
         return matchingTiles;
     }
 
+
+    public void Process()
+    {
+        IsProcessing = true;
+        ProcessMatches();
+        combo = 0;
+    }
+
+    #region Match
+
+    private void ProcessMatches()
+    {        
+        List<TileController> matchingTiles = GetAllMatches();
+
+        // stop locking if no match found
+        if (matchingTiles == null || matchingTiles.Count == 0)
+        {
+            IsProcessing = false;
+            return;
+        }
+        combo++;
+        ScoreManager.Instance.IncrementCurrentScore(matchingTiles.Count, combo);
+        
+        StartCoroutine(ClearMatches(matchingTiles, ProcessDrop));
+    }
+
     private IEnumerator ClearMatches(List<TileController> matchingTiles, System.Action onCompleted)
     {
         List<bool> isCompleted = new List<bool>();
@@ -215,12 +236,22 @@ public class BoardManager : MonoBehaviour
 
     #endregion
 
+    public bool IsAllTrue(List<bool> list)
+    {
+        foreach (bool status in list)
+        {
+            if (!status) return false;
+        }
+
+        return true;
+    }
+
     #region Drop
+
     private void ProcessDrop()
     {
         Dictionary<TileController, int> droppingTiles = GetAllDrop();
-
-        StartCoroutine(DropTiles(droppingTiles, ProcessDestroyAndFill));
+        StartCoroutine(DropTiles(droppingTiles, ProcessDestroyAndFill)); 
     }
 
     private Dictionary<TileController, int> GetAllDrop()
@@ -276,14 +307,15 @@ public class BoardManager : MonoBehaviour
 
         onCompleted?.Invoke();
     }
+
     #endregion
 
     #region Destroy & Fill
+
     private void ProcessDestroyAndFill()
     {
         List<TileController> destroyedTiles = GetAllDestroyed();
-
-        StartCoroutine(DestroyAndFillTiles(destroyedTiles, ProcessReposition));
+        StartCoroutine(DestroyAndFillTiles(destroyedTiles, ProcessReposition)); 
     }
 
     private List<TileController> GetAllDestroyed()
@@ -296,7 +328,7 @@ public class BoardManager : MonoBehaviour
             {
                 if (tiles[x, y].IsDestroyed)
                 {
-                    destroyedTiles.Add(tiles[x, y]);
+                   destroyedTiles.Add(tiles[x, y]);
                 }
             }
         }
@@ -329,9 +361,11 @@ public class BoardManager : MonoBehaviour
 
         onCompleted?.Invoke();
     }
+
     #endregion
 
     #region Reposition
+
     private void ProcessReposition()
     {
         StartCoroutine(RepositionTiles(ProcessMatches));
@@ -367,34 +401,6 @@ public class BoardManager : MonoBehaviour
 
         onCompleted?.Invoke();
     }
+
     #endregion
-
-    public Vector2Int GetTileIndex(TileController tile)
-    {
-        for (int x = 0; x < size.x; x++)
-        {
-            for (int y = 0; y < size.y; y++)
-            {
-                if (tile == tiles[x, y]) return new Vector2Int(x, y);
-            }
-        }
-
-        return new Vector2Int(-1, -1);
-    }
-
-    public Vector2 GetIndexPosition(Vector2Int index)   
-    {
-        Vector2 tileSize = tilePrefab.GetComponent<SpriteRenderer>().size;
-        return new Vector2(startPosition.x + ((tileSize.x + offsetTile.x) * index.x), startPosition.y + ((tileSize.y + offsetTile.y) * index.y));
-    }
-
-    public bool IsAllTrue(List<bool> list)
-    {
-        foreach (bool status in list)
-        {
-            if (!status) return false;
-        }
-
-        return true;
-    }
 }
